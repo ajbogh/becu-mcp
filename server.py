@@ -62,22 +62,34 @@ async def get_balance(account_index: int) -> dict | None:
 
 
 @mcp.tool()
-async def get_transactions(account_index: int, days: int = 30) -> list[dict]:
+async def get_transactions(
+    account_index: int,
+    days: int = 30,
+    start_date: str = "",
+    end_date: str = "",
+) -> list[dict]:
     """
-    Get recent transactions for a BECU account.
+    Get transactions for a BECU account via CSV export.
 
     Args:
         account_index: The account index (obtained from get_accounts).
-        days: Number of days of history to retrieve (default: 30).
+        days: Number of days back from today (default: 30). Ignored if start_date/end_date provided.
+        start_date: Start date in MM/DD/YYYY format (e.g. "04/01/2026").
+        end_date: End date in MM/DD/YYYY format (e.g. "04/30/2026").
 
     Returns a list of transactions with date, description, amount, and running balance.
     """
-    key = f"transactions:{account_index}:{days}"
+    key = f"transactions:{account_index}:{start_date or days}:{end_date}"
     cached = _cache_get(key)
     if cached is not None:
         return cached
     from becu_client import get_transactions as _get_transactions
-    result = await _get_transactions(account_index, days)
+    result = await _get_transactions(
+        account_index,
+        days=days,
+        start_date=start_date or None,
+        end_date=end_date or None,
+    )
     _cache_set(key, result)
     return result
 

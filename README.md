@@ -4,6 +4,12 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that provides read-only access to your [BECU](https://www.becu.org) accounts via browser automation. Use it with Claude Code or any MCP-compatible client to query account balances and transaction history conversationally.
 
+> **Fork of [jrolstad/becu-mcp](https://github.com/jrolstad/becu-mcp)** with the following improvements:
+> - `get_transactions` now supports exact date ranges (`start_date`/`end_date`) in addition to `days`
+> - Transaction export uses a **direct HTTP POST** to BECU's CSV download endpoint instead of driving the AJAX UI — significantly faster and more reliable
+> - Session validation checks the Activity page directly, catching `SystemUnavailable` redirects that the original missed
+> - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` env var lets you point to a custom Chromium binary (e.g. snap-installed Chromium on Ubuntu 24.04+)
+
 ## What it does
 
 Exposes three tools:
@@ -12,7 +18,7 @@ Exposes three tools:
 |------|-------------|
 | `get_accounts` | Returns all accounts with current balance, available balance, and YTD interest |
 | `get_balance` | Returns balance details for a single account by index |
-| `get_transactions` | Returns transaction history for an account (date, description, amount, balance) |
+| `get_transactions` | Returns transaction history for an account; supports `days`, `start_date`, and `end_date` |
 
 Authentication is handled automatically using Playwright to drive a Chromium browser. Sessions are persisted to `session.json` so subsequent calls run headlessly. If the session expires or MFA is required, a visible browser window opens for you to complete login.
 
@@ -89,6 +95,22 @@ Once connected, you can ask Claude things like:
 - "What are the last 20 transactions from My Checking?"
 - "What's the balance on my savings account?"
 - "How much YTD interest has the Annual Payments savings account earned?"
+- "Get my checking transactions from April 1 through April 30"
+- "Show me all transactions between 01/01/2026 and 03/31/2026"
+
+### Ubuntu / snap Chromium
+
+If you're on Ubuntu 24.04+ where Playwright's bundled Chromium isn't supported, use the system snap Chromium instead:
+
+```bash
+sudo snap install chromium
+```
+
+Then set the env var in your MCP config or `.env`:
+
+```
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium
+```
 
 ## Authentication and sessions
 
@@ -116,11 +138,13 @@ session.json     # Persisted browser session cookies (gitignored)
 
 Key functions:
 
-- `_get_page_html()` — fetches a page, handles auth/session management
+- `_with_authenticated_page(callback)` — runs a callback with a headless authenticated page, re-auths if session expired
+- `_export_transactions_csv()` — POSTs directly to BECU's CSV download endpoint using ASP.NET form tokens extracted from the page
+- `_parse_becu_csv_bytes()` — parses raw CSV bytes into transaction dicts, handles Debit/Credit split columns
 - `_cell_label_and_value()` — extracts the field label and value from a tablesaw `<td>`
 - `_parse_currency()` — converts `"$1,234.56"` to `1234.56`
 - `get_accounts()` — scrapes the Summary page, deduplicates by account number
-- `get_transactions()` — scrapes the Activity page, filters out summary/non-transaction rows
+- `get_transactions()` — exports transactions via CSV for an exact date range
 
 ### Running locally
 
