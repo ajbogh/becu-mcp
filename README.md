@@ -27,25 +27,32 @@ Authentication is handled automatically using Playwright to drive a Chromium bro
 ### Prerequisites
 
 - Python 3.11+
-- [uv](https://docs.astral.sh/uv/) or pip
+- [uv](https://docs.astral.sh/uv/) (recommended — avoids conflicts with Ubuntu's managed Python)
+
+Install `uv` if you don't have it:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Steps
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/jrolstad/becu-mcp.git
+   git clone https://github.com/ajbogh/becu-mcp.git
    cd becu-mcp
    ```
 
-2. Install dependencies:
+2. Create a virtual environment and install dependencies:
    ```bash
-   pip install -r requirements.txt
+   uv venv
+   uv pip install -r requirements.txt
    ```
 
 3. Install Playwright's Chromium browser:
    ```bash
-   playwright install chromium
+   .venv/bin/playwright install chromium
    ```
+   > **Ubuntu 24.04+:** Playwright's bundled Chromium may not be supported. Use snap Chromium instead — see [Ubuntu / snap Chromium](#ubuntu--snap-chromium) below.
 
 4. Set your BECU credentials using one of the two options below.
 
@@ -62,7 +69,7 @@ Pass credentials as environment variables in the MCP server entry. This keeps ev
   "mcpServers": {
     "becu": {
       "type": "stdio",
-      "command": "python",
+      "command": "/path/to/becu-mcp/.venv/bin/python",
       "args": ["/path/to/becu-mcp/server.py"],
       "env": {
         "BECU_USERNAME": "your_username_here",
@@ -149,13 +156,13 @@ Key functions:
 ### Running locally
 
 ```bash
-python server.py
+.venv/bin/python server.py
 ```
 
 Or via the MCP CLI:
 
 ```bash
-mcp dev server.py
+.venv/bin/mcp dev server.py
 ```
 
 ### Adding new tools
