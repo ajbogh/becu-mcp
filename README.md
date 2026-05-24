@@ -139,16 +139,17 @@ requirements.txt # Python dependencies
 session.json     # Persisted browser session cookies (gitignored)
 ```
 
-### How scraping works
+### How it works
 
-`becu_client.py` uses Playwright to load pages from `onlinebanking.becu.org`, then parses the HTML with BeautifulSoup. The BECU pages use a [Tablesaw](https://github.com/filamentgroup/tablesaw) responsive table library that embeds column labels inside each `<td>` as `<b class="tablesaw-cell-label">` elements. The parser extracts these labels to identify each cell's field regardless of column order, making it resilient to layout changes.
+`becu_client.py` uses Playwright to log in to `onlinebanking.becu.org` and persist the session cookies. Once authenticated, subsequent requests run headlessly — the browser is only opened visibly when a login or MFA step is required.
+
+Account data (`get_accounts`, `get_balance`) is scraped from the Summary page HTML using BeautifulSoup. Transaction data (`get_transactions`) skips the UI entirely: it loads the Activity page to establish session context, then makes a direct HTTP POST to BECU's CSV export endpoint and parses the response. This is faster and more reliable than driving the page's date-picker and download controls.
 
 Key functions:
 
-- `_with_authenticated_page(callback)` — runs a callback with a headless authenticated page, re-auths if session expired
-- `_export_transactions_csv()` — POSTs directly to BECU's CSV download endpoint using ASP.NET form tokens extracted from the page
+- `_with_authenticated_page(callback)` — ensures a valid session exists, then runs a callback with the authenticated page
+- `_export_transactions_csv()` — POSTs to BECU's CSV download endpoint and returns parsed transactions
 - `_parse_becu_csv_bytes()` — parses raw CSV bytes into transaction dicts, handles Debit/Credit split columns
-- `_cell_label_and_value()` — extracts the field label and value from a tablesaw `<td>`
 - `_parse_currency()` — converts `"$1,234.56"` to `1234.56`
 - `get_accounts()` — scrapes the Summary page, deduplicates by account number
 - `get_transactions()` — exports transactions via CSV for an exact date range
